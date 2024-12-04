@@ -3,13 +3,14 @@ from psycopg2.extras import RealDictCursor
 
 # Funkcja do nawiązania połączenia z bazą danych
 def get_connection():
-    return psycopg2.connect(
-        dbname="postgre",
-        user="postgre",
+    conn =psycopg2.connect(
+        dbname="postgres",
+        user="postgres",
         password="szymon",
         host="localhost",
         port=5432
     )
+    return conn
 
 # Funkcja wykonująca zapytania SQL
 def execute_query(query, params=None):
