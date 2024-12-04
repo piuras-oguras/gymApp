@@ -116,6 +116,7 @@ class GymApp:
             messagebox.showinfo("Sukces", "Rekord został usunięty")
         except Exception as e:
             messagebox.showerror("Błąd", f"Nie udało się usunąć rekordu: {e}")
+            print (e)
 
     def show_form(self, title, data=None):
         form = tk.Toplevel(self.root)
@@ -143,7 +144,7 @@ class GymApp:
                     if data:
                         readable_value = self.get_readable_value(referenced_table, data[i])
                         combobox.set(readable_value)
-                    entries[column] = combobox
+
                     continue
 
             ttk.Label(form, text=column).grid(row=i, column=0)
@@ -153,33 +154,35 @@ class GymApp:
                 entry.insert(0, data[i])
             entries[column] = entry
 
-        def save():
-            values = {}
-            for col, widget in entries.items():
-                if isinstance(widget, ttk.Combobox):
-                    values[col] = self.get_id_from_readable(referenced_table, widget.get())
-                else:
-                    values[col] = widget.get()
+            def save():
+                values = {}
+                for col, widget in entries.items():
+                    if isinstance(widget, ttk.Combobox):
+                        values[col] = self.get_id_from_readable(referenced_table, widget.get())
+                    else:
+                        values[col] = widget.get()
 
-            try:
-                if data:
-                    # Update
-                    set_clause = ", ".join([f"{col} = %s" for col in values.keys()])
-                    query = f"UPDATE {table_name} SET {set_clause} WHERE {list(values.keys())[0]} = %s;"
-                    self.cursor.execute(query, tuple(values.values()) + (data[0],))
-                else:
-                    # Insert
-                    cols = ", ".join(values.keys())
-                    placeholders = ", ".join(["%s"] * len(values))
-                    query = f"INSERT INTO {table_name} ({cols}) VALUES ({placeholders});"
-                    self.cursor.execute(query, tuple(values.values()))
+                try:
+                    if data:
+                        # Update
+                        set_clause = ", ".join([f"{col} = %s" for col in values.keys()])
+                        query = f"UPDATE {table_name} SET {set_clause} WHERE {columns[0]} = %s;"
+                        print(query)
+                        print(self.cursor.execute(query, tuple(values.values()) + (data[0],)))
+                        self.cursor.execute(query, tuple(values.values()) + (data[0],))
+                    else:
+                        # Insert
+                        cols = ", ".join(values.keys())
+                        placeholders = ", ".join(["%s"] * len(values))
+                        query = f"INSERT INTO {table_name} ({cols}) VALUES ({placeholders});"
+                        self.cursor.execute(query, tuple(values.values()))
 
-                self.conn.commit()
-                self.update_table_view()
-                messagebox.showinfo("Sukces", "Rekord został zapisany")
-                form.destroy()
-            except Exception as e:
-                messagebox.showerror("Błąd", f"Nie udało się zapisać rekordu: {e}")
+                    self.conn.commit()
+                    self.update_table_view()  # Odświeżenie widoku tabeli
+                    messagebox.showinfo("Sukces", "Rekord został zapisany")
+                    form.destroy()
+                except Exception as e:
+                    messagebox.showerror("Błąd", f"Nie udało się zapisać rekordu: {e}")
 
         ttk.Button(form, text="Zapisz", command=save).grid(row=len(columns), column=0, columnspan=2)
 
@@ -256,7 +259,7 @@ class GymApp:
             elif table_name == "Pracownicy" and id_value != "None":
                 self.cursor.execute("SELECT imie, nazwisko FROM Pracownicy WHERE id_pracownika = %s", (id_value,))
             elif table_name == "Instruktor" and id_value != "None":
-                self.cursor.execute("SELECT id_pracownika FROM Instruktor WHERE id_pracownika = %s", (id_value,))
+                self.cursor.execute("SELECT id_pracownika, specjalizacja FROM Instruktor WHERE id_pracownika = %s", (id_value,))
             elif table_name == "Zajecia" and id_value != "None":
                 self.cursor.execute("SELECT nazwa_zajec, data_i_godzina FROM Zajecia WHERE id_zajec = %s", (id_value,))
             elif table_name == "Sprzet" and id_value != "None":
@@ -275,8 +278,12 @@ class GymApp:
                 self.cursor.execute("SELECT ocena, id_klienta FROM Ocena_instruktorow WHERE id_oceny = %s", (id_value,))
             elif table_name == "Grafik_pracownikow" and id_value != "None":
                 self.cursor.execute("SELECT id_pracownika, data, godzina_rozpoczecia, godzina_zakonczenia FROM Grafik_pracownikow WHERE id_grafiku = %s", (id_value,))
+                row = self.cursor.fetchone()
+                return f"{row[0]} {row[1]} {row[2]} {row[3]}" if row else "Test"
             elif id_value == "None":
                 return ""
+            else:
+                return id_value
             row = self.cursor.fetchone()
             return f"{row[0]} {row[1]}" if row else "Test"
         except Exception as e:
