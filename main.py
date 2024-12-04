@@ -18,6 +18,9 @@ class GymApp:
         self.root.title("Aplikacja Kliencka - Siłownia")
         self.conn = None
         self.cursor = None
+        self.root.title("System zarządzania siłownią")
+        root.iconbitmap("gymappico.ico")
+        #root.state('zoomed')
 
         # Wybór tabeli
         self.table_var = tk.StringVar()
@@ -164,8 +167,14 @@ class GymApp:
                     combobox = ttk.Combobox(form, values=options, state="readonly")
                     combobox.grid(row=i, column=1)
                     if data:
-                        readable_value = self.get_readable_value(referenced_table, data[i])
-                        combobox.set(readable_value)
+                        data = list(data)
+                        if data[i] == "None":
+                            readable_value = self.get_readable_value(referenced_table, data[i])
+                            combobox.set(readable_value)
+                        else:
+                            data[i] = re.findall(r'\(id:(\d+)\)',data[i])[0]
+                            readable_value = self.get_readable_value(referenced_table, data[i])
+                            combobox.set(readable_value)
                     entries[column] = combobox
                     continue
 
@@ -178,7 +187,11 @@ class GymApp:
 
         def save():
             values = {}
+            counter=0
             for col, widget in entries.items():
+                if counter == 0 and table_name != "Instruktor" and table_name != "Biurowy":
+                    counter+=1
+                    continue
                 if isinstance(widget, ttk.Combobox):
                     values[col] = self.get_id_from_readable(referenced_table, widget.get())
                 else:
@@ -203,6 +216,7 @@ class GymApp:
                 form.destroy()
             except Exception as e:
                 messagebox.showerror("Błąd", f"Nie udało się zapisać rekordu: {e}")
+                print(e)
 
         ttk.Button(form, text="Zapisz", command=save).grid(row=len(columns), column=0, columnspan=2)
 
@@ -267,7 +281,7 @@ class GymApp:
                 return [f"ID: {row[0]} {row[2]} {row[3]} : {row[4]} (Pracownik: {row[1]})" for row in self.cursor.fetchall()]
             elif table_name == "Czlonkostwo":
                 self.cursor.execute("SELECT id_czlonkostwa, id_klienta FROM Czlonkostwo")
-                return [f"ID: {row[0]} (Klient: {row[1]}, Placówka: {row[2]})" for row in self.cursor.fetchall()]
+                return [f"ID: {row[0]} (Klient: {row[1]})" for row in self.cursor.fetchall()]
         except Exception as e:
             messagebox.showerror("Błąd", f"Nie udało się pobrać danych: {e}")
 
@@ -278,36 +292,39 @@ class GymApp:
     def get_readable_value(self, table_name, id_value):
         try:
             if table_name == "Klienci" and id_value != "None":
-                self.cursor.execute("SELECT imie, nazwisko FROM Klienci WHERE id_klienta = %s", (id_value,))
+                self.cursor.execute("SELECT imie, nazwisko, id_klienta FROM Klienci WHERE id_klienta = %s", (id_value,))
             elif table_name == "Pracownicy" and id_value != "None":
-                self.cursor.execute("SELECT imie, nazwisko FROM Pracownicy WHERE id_pracownika = %s", (id_value,))
+                self.cursor.execute("SELECT imie, nazwisko, id_pracownika FROM Pracownicy WHERE id_pracownika = %s", (id_value,))
             elif table_name == "Instruktor" and id_value != "None":
                 self.cursor.execute("SELECT id_pracownika, specjalizacja FROM Instruktor WHERE id_pracownika = %s", (id_value,))
+                row = self.cursor.fetchone()
+                return f"{row[0]} {row[1]} (id:{row[0]})" if row else None
             elif table_name == "Zajecia" and id_value != "None":
-                self.cursor.execute("SELECT nazwa_zajec, data_i_godzina FROM Zajecia WHERE id_zajec = %s", (id_value,))
+                self.cursor.execute("SELECT nazwa_zajec, data_i_godzina, id_zajec FROM Zajecia WHERE id_zajec = %s", (id_value,))
             elif table_name == "Sprzet" and id_value != "None":
-                self.cursor.execute("SELECT nazwa, typ FROM Sprzet WHERE id_sprzetu = %s", (id_value,))
+                self.cursor.execute("SELECT nazwa, typ, id_sprzetu FROM Sprzet WHERE id_sprzetu = %s", (id_value,))
             elif table_name == "Rezerwacja_sprzetu" and id_value != "None":
-                self.cursor.execute("SELECT id_sprzetu, id_klienta FROM Rezerwacja_sprzetu WHERE id_rezerwacji = %s", (id_value,))
+                self.cursor.execute("SELECT id_sprzetu, id_klienta, id_rezerwacji FROM Rezerwacja_sprzetu WHERE id_rezerwacji = %s", (id_value,))
             elif table_name == "Platnosc" and id_value != "None":
-                self.cursor.execute("SELECT kwota, data_platnosci FROM Platnosc WHERE id_platnosci = %s", (id_value,))
+                self.cursor.execute("SELECT kwota, data_platnosci, id_platnosci FROM Platnosc WHERE id_platnosci = %s", (id_value,))
             elif table_name == "Wydarzenia" and id_value != "None":
-                self.cursor.execute("SELECT nazwa, data FROM Wydarzenia WHERE id_wydarzenia = %s", (id_value,))
+                self.cursor.execute("SELECT nazwa, data, id_wydarzenia FROM Wydarzenia WHERE id_wydarzenia = %s", (id_value,))
             elif table_name == "Anulowanie_czlonkostwa":
-                self.cursor.execute("SELECT powod_zamkniecia, id_czlonkostwa FROM Anulowanie_czlonkostwa WHERE id_anulowania = %s", (id_value,))
+                self.cursor.execute("SELECT powod_zamkniecia, id_czlonkostwa, id_anulowania FROM Anulowanie_czlonkostwa WHERE id_anulowania = %s", (id_value,))
             elif table_name == "Placowki" and id_value != "None":
-                self.cursor.execute("SELECT nazwa, adres  FROM Placowki WHERE id_placowki = %s", (id_value,))
+                self.cursor.execute("SELECT nazwa, adres, id_placowki  FROM Placowki WHERE id_placowki = %s", (id_value,))
             elif table_name == "Ocena_instruktorow" and id_value != "None":
-                self.cursor.execute("SELECT ocena, id_klienta FROM Ocena_instruktorow WHERE id_oceny = %s", (id_value,))
+                self.cursor.execute("SELECT ocena, id_klienta, id_oceny FROM Ocena_instruktorow WHERE id_oceny = %s", (id_value,))
             elif table_name == "Grafik_pracownikow" and id_value != "None":
                 self.cursor.execute("SELECT id_pracownika, data, godzina_rozpoczecia, godzina_zakonczenia FROM Grafik_pracownikow WHERE id_grafiku = %s", (id_value,))
+                row = self.cursor.fetchone()
                 return f"{row[0]} {row[1]} {row[2]} {row[3]}" if row else None
             elif table_name == "Czlonkostwo" and id_value != "None":
-                self.cursor.execute("SELECT typ_czlonkostwa, status FROM Czlonkostwo WHERE id_czlonkostwa = %s", (id_value,))
+                self.cursor.execute("SELECT typ_czlonkostwa, status, id_czlonkostwa FROM Czlonkostwo WHERE id_czlonkostwa = %s", (id_value,))
             elif id_value == "None":
                 return ""
             row = self.cursor.fetchone()
-            return f"{row[0]} {row[1]}" if row else None
+            return f"{row[0]} {row[1]} (id:{row[2]})" if row else None
         except Exception as e:
             return None
 
