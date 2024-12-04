@@ -76,34 +76,11 @@ class GymApp:
             for row in self.tree.get_children():
                 self.tree.delete(row)
 
-            # Zamiana kluczy obcych na wartości
+            # Wstaw nowe dane
             for row in rows:
-                row_data = []
-                counter = 0
-                for idx, value in enumerate(row):
-                    column_name = columns[idx]
-
-                    if counter == 0 and table_name != "Instruktor" and table_name != "Biurowy":
-                        counter+=1
-                        row_data.append(value)
-                        continue
-                    if column_name.startswith("id_") and column_name != f"id_{table_name.lower()}":
-                        # Jeśli to klucz obcy, to zamień go na czytelną wartość
-                        referenced_table = self.get_referenced_table(column_name)
-                        if referenced_table:
-                            readable_value = self.get_readable_value(referenced_table, value)
-                            row_data.append(readable_value)
-                        else:
-                            row_data.append(value)  # Jeśli nie mamy tabeli referencyjnej, dodajemy wartość
-                    else:
-                        # Klucz główny lub inne kolumny - nie zmieniamy ich
-                        row_data.append(value)
-
-                self.tree.insert("", "end", values=row_data)
-
+                self.tree.insert("", "end", values=row)
         except Exception as e:
             messagebox.showerror("Błąd", f"Nie udało się załadować danych: {e}")
-
 
     def add_record(self):
         self.show_form("Dodaj rekord")
@@ -222,7 +199,6 @@ class GymApp:
             "id_oceny": "Ocena_instruktorow",
             "id_grafiku": "Grafik_pracownikow",
             "id_instruktora": "Instruktor",
-            "id_czlonkostwa": "Czlonkostwo",
             "None":"None"
         }
         return mapping.get(column)
@@ -265,11 +241,9 @@ class GymApp:
             elif table_name == "Grafik_pracownikow":
                 self.cursor.execute("SELECT id_grafiku, id_pracownika, data, godzina_rozpoczecia, godzina_zakonczenia FROM Grafik_pracownikow")
                 return [f"ID: {row[0]} {row[2]} {row[3]} : {row[4]} (Pracownik: {row[1]})" for row in self.cursor.fetchall()]
-            elif table_name == "Czlonkostwo":
-                self.cursor.execute("SELECT id_czlonkostwa, id_klienta FROM Czlonkostwo")
-                return [f"ID: {row[0]} (Klient: {row[1]}, Placówka: {row[2]})" for row in self.cursor.fetchall()]
         except Exception as e:
             messagebox.showerror("Błąd", f"Nie udało się pobrać danych: {e}")
+            return []
 
     def get_id_from_readable(self, table_name, readable):
         match = re.search(r"\(ID: (\d+)\)", readable)
@@ -282,11 +256,11 @@ class GymApp:
             elif table_name == "Pracownicy" and id_value != "None":
                 self.cursor.execute("SELECT imie, nazwisko FROM Pracownicy WHERE id_pracownika = %s", (id_value,))
             elif table_name == "Instruktor" and id_value != "None":
-                self.cursor.execute("SELECT id_pracownika, specjalizacja FROM Instruktor WHERE id_pracownika = %s", (id_value,))
+                self.cursor.execute("SELECT id_pracownika FROM Instruktor WHERE id_pracownika = %s", (id_value,))
             elif table_name == "Zajecia" and id_value != "None":
                 self.cursor.execute("SELECT nazwa_zajec, data_i_godzina FROM Zajecia WHERE id_zajec = %s", (id_value,))
             elif table_name == "Sprzet" and id_value != "None":
-                self.cursor.execute("SELECT nazwa, typ FROM Sprzet WHERE id_sprzetu = %s", (id_value,))
+                self.cursor.execute("SELECT nazwa FROM Sprzet WHERE id_sprzetu = %s", (id_value,))
             elif table_name == "Rezerwacja_sprzetu" and id_value != "None":
                 self.cursor.execute("SELECT id_sprzetu, id_klienta FROM Rezerwacja_sprzetu WHERE id_rezerwacji = %s", (id_value,))
             elif table_name == "Platnosc" and id_value != "None":
@@ -296,18 +270,15 @@ class GymApp:
             elif table_name == "Anulowanie_czlonkostwa":
                 self.cursor.execute("SELECT powod_zamkniecia, id_czlonkostwa FROM Anulowanie_czlonkostwa WHERE id_anulowania = %s", (id_value,))
             elif table_name == "Placowki" and id_value != "None":
-                self.cursor.execute("SELECT nazwa, adres  FROM Placowki WHERE id_placowki = %s", (id_value,))
+                self.cursor.execute("SELECT nazwa FROM Placowki WHERE id_placowki = %s", (id_value,))
             elif table_name == "Ocena_instruktorow" and id_value != "None":
                 self.cursor.execute("SELECT ocena, id_klienta FROM Ocena_instruktorow WHERE id_oceny = %s", (id_value,))
             elif table_name == "Grafik_pracownikow" and id_value != "None":
                 self.cursor.execute("SELECT id_pracownika, data, godzina_rozpoczecia, godzina_zakonczenia FROM Grafik_pracownikow WHERE id_grafiku = %s", (id_value,))
-                return f"{row[0]} {row[1]} {row[2]} {row[3]}" if row else None
-            elif table_name == "Czlonkostwo" and id_value != "None":
-                self.cursor.execute("SELECT typ_czlonkostwa, status FROM Czlonkostwo WHERE id_czlonkostwa = %s", (id_value,))
             elif id_value == "None":
                 return ""
             row = self.cursor.fetchone()
-            return f"{row[0]} {row[1]}" if row else None
+            return f"{row[0]} {row[1]}" if row else "Test"
         except Exception as e:
             return None
 
